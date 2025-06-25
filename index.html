@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>À la Plage Bingo</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #f0f8ff; /* Light blue background */
+        }
+        .bingo-square {
+            width: 120px; /* Fixed width for squares */
+            height: 140px; /* Fixed height for squares to accommodate image and text */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid #a0c4ff; /* Light blue border */
+            background-color: #ffffff;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.9rem; /* Slightly smaller font for words */
+            color: #333;
+            padding: 5px; /* Padding inside squares */
+            border-radius: 8px; /* Rounded corners for squares */
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+        .bingo-square.marked {
+            background-color: #d4edda; /* Light green for marked squares */
+            opacity: 0.8;
+            box-shadow: inset 1px 1px 3px rgba(0,0,0,0.2);
+        }
+        .bingo-square .visual-content {
+            font-size: 4rem; /* Large size for emojis */
+            line-height: 1;
+            margin-bottom: 5px; /* Space between visual and text */
+        }
+        .bingo-square img {
+            width: 80px; /* Smaller size for fallback images */
+            height: 80px;
+            object-fit: contain;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+        .free-space {
+            background-color: #ffe0b2; /* Orange-ish for free space */
+            color: #6d4c41; /* Darker text for free space */
+        }
+        .bingo-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px; /* Space between squares */
+            padding: 20px;
+            background-color: #cce7ff; /* Slightly darker blue for grid background */
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .caller-word-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px;
+            background-color: #ffffff;
+            border-radius: 5px;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
+            transition: background-color 0.2s ease-in-out;
+        }
+        .caller-word-item.called {
+            background-color: #f7ddde; /* Light red for called words */
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+        .bingo-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #4CAF50; /* Green background */
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 2rem;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none; /* Hidden by default */
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 30px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        /* Loading Spinner Styles - Removed as dynamic image generation is not used */
+    </style>
+</head>
+<body class="p-8">
+
+    <div class="container mx-auto p-4 bg-white rounded-lg shadow-xl">
+        <h1 class="text-4xl font-extrabold text-center text-blue-800 mb-6">À la Plage Bingo!</h1>
+        <p class="text-center text-lg text-gray-700 mb-8">
+            Click "Generate New Card" to get a unique Bingo card. For teachers, use the "Caller Words" list to mark words as called.
+            Visuals use emojis for relevance, with a text fallback.
+        </p>
+
+        <div class="flex flex-col lg:flex-row gap-8 justify-center">
+            <!-- Bingo Card Section -->
+            <div class="flex-1 min-w-0">
+                <h2 class="text-2xl font-bold text-center text-blue-700 mb-4">Your Bingo Card</h2>
+                <div class="flex justify-center mb-6">
+                    <button id="generateCardButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                        Generate New Card
+                    </button>
+                </div>
+                <div id="bingoGrid" class="bingo-grid mx-auto max-w-fit">
+                    <!-- Bingo squares will be generated here by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Caller Section -->
+            <div class="flex-1 min-w-0 lg:max-w-md">
+                <h2 class="text-2xl font-bold text-center text-blue-700 mb-4">Caller Words (For Teacher)</h2>
+                <div id="callerWords" class="bg-blue-50 p-6 rounded-lg shadow-md max-h-[600px] overflow-y-auto">
+                    <!-- Caller words will be generated here by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bingo Message Modal -->
+    <div id="bingoMessageModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('bingoMessageModal')">&times;</span>
+            <p id="bingoMessage" class="text-green-700 text-3xl font-bold">BINGO!</p>
+            <p class="text-xl mt-4">Congratulations!</p>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full mt-6" onclick="closeModal('bingoMessageModal')">
+                Great!
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // List of French words and phrases for the Bingo game, based on the uploaded document
+        const words = [
+            "un château de sable", "une plage", "l'océan", "nager", "le sable",
+            "un palmier", "une pelle", "un maillot de bain", "un crabe",
+            "une serviette de plage", "un parasol", "un coquillage",
+            "un ballon de plage", "un seau", "un bateau",
+            "les lunettes de soleil", "une casquette", "une mouette",
+            "le soleil", "les palmes", "une planche de surf",
+            "un poisson", "une bouée", "la crème solaire",
+            "les algues", "une caméra", "un t-shirt", "un short",
+            "une vague", "les sandales"
+        ];
+
+        // Map words to emojis for relevant visual representation
+        // For words without a clear emoji, it will fall back to a placehold.co image with the text.
+        const wordEmojiMap = {
+            "un château de sable": "🏰", // Castle emoji
+            "une plage": "🏖️", // Beach emoji
+            "l'océan": "🌊", // Wave/Ocean emoji
+            "nager": "🏊", // Swimmer emoji
+            "le sable": "🏝️", // Desert island (implies sand)
+            "un palmier": "🌴", // Palm tree emoji
+            "une pelle": "", // No good single emoji for shovel, will use text fallback
+            "un maillot de bain": "👙", // Bikini emoji
+            "un crabe": "🦀", // Crab emoji
+            "une serviette de plage": "", // No good single emoji for beach towel, will use text fallback
+            "un parasol": "⛱️", // Umbrella emoji
+            "un coquillage": "🐚", // Seashell emoji
+            "un ballon de plage": "🏐", // Volleyball (closest for beach ball)
+            "un seau": "", // No good single emoji for bucket, will use text fallback
+            "un bateau": "⛵", // Sailboat emoji
+            "les lunettes de soleil": "😎", // Smiling face with sunglasses
+            "une casquette": "🧢", // Baseball cap emoji
+            "une mouette": "🕊️", // Dove (closest to a seagull, or just text)
+            "le soleil": "☀️", // Sun emoji
+            "les palmes": "🥽", // Diving Mask emoji
+            "une planche de surf": "🏄", // Surfer emoji
+            "un poisson": "🐠", // Fish emoji
+            "une bouée": "🍩", // Donut (closest for lifebuoy)
+            "la crème solaire": "🧴", // Lotion bottle (closest for sunscreen)
+            "les algues": "🌿", // Herb (closest for seaweed, or just text)
+            "une caméra": "📷", // Camera emoji
+            "un t-shirt": "👕", // T-shirt emoji
+            "un short": "🩳", // Shorts emoji
+            "une vague": "🌊", // Wave emoji
+            "les sandales": "🩴" // Thong Sandal emoji - Fixed: Removed extra '='
+        }; 
+
+
+        // Global state for the bingo game
+        let currentCardWords = [];
+        let markedSquares = [];
+        let calledWords = new Set(); // Stores words already called by the teacher
+
+        const BINGO_SIZE = 5; // For a 5x5 grid
+        const NUM_SQUARES = BINGO_SIZE * BINGO_SIZE;
+        const FREE_SPACE_INDEX = Math.floor(NUM_SQUARES / 2); // Center square
+
+        /**
+         * Returns the emoji for a given word, or a placeholder image if no emoji is mapped.
+         * @param {string} word The word to get a visual for.
+         * @returns {string} The HTML string for the emoji or a placeholder image URL.
+         */
+        function getVisualContent(word) {
+            const emoji = wordEmojiMap[word];
+            if (emoji) { // If an emoji is mapped (even if it's an empty string for now, to distinguish from undefined)
+                if (emoji.length < 5) { // Check if it's a short string (likely an emoji)
+                    return `<span class="visual-content">${emoji}</span>`;
+                } else { // This case handles entries like " shovel" which were notes, not actual emojis
+                    const encodedWord = encodeURIComponent(word.replace(/'/g, '').replace(/ /g, '+').replace(/é/g, 'e').replace(/à/g, 'a').replace(/ô/g, 'o').replace(/û/g, 'u').replace(/ç/g, 'c').replace(/€/g, 'Euro'));
+                    return `<img src="https://placehold.co/100x100/ADD8E6/000000?text=${encodedWord}" alt="${word}" class="mb-1 rounded-sm">`;
+                }
+            } else { // If no specific emoji is mapped or emoji mapping is missing
+                const encodedWord = encodeURIComponent(word.replace(/'/g, '').replace(/ /g, '+').replace(/é/g, 'e').replace(/à/g, 'a').replace(/ô/g, 'o').replace(/û/g, 'u').replace(/ç/g, 'c').replace(/€/g, 'Euro'));
+                return `<img src="https://placehold.co/100x100/ADD8E6/000000?text=${encodedWord}" alt="${word}" class="mb-1 rounded-sm">`;
+            }
+        }
+
+
+        // Function to shuffle an array
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Function to generate a new Bingo card
+        function generateBingoCard() {
+            // Clear previous card and marked squares
+            markedSquares = Array(NUM_SQUARES).fill(false);
+            currentCardWords = [];
+
+            // Get a shuffled list of unique words for the card
+            // We need NUM_SQUARES - 1 unique words (since one is free space)
+            const availableWords = shuffleArray([...words]).slice(0, NUM_SQUARES - 1);
+
+            // Populate the card words, adding the free space
+            for (let i = 0; i < NUM_SQUARES; i++) {
+                if (i === FREE_SPACE_INDEX) {
+                    currentCardWords.push("FREE SPACE");
+                    markedSquares[i] = true; // Free space is always marked
+                } else {
+                    currentCardWords.push(availableWords.pop());
+                }
+            }
+
+            renderBingoCard();
+        }
+
+        // Function to render the Bingo card on the HTML
+        function renderBingoCard() {
+            const bingoGrid = document.getElementById('bingoGrid');
+            bingoGrid.innerHTML = ''; // Clear existing squares
+
+            currentCardWords.forEach((word, index) => {
+                const square = document.createElement('div');
+                square.classList.add('bingo-square', 'rounded-lg', 'shadow-md', 'flex', 'flex-col', 'items-center', 'justify-center', 'p-2', 'cursor-pointer', 'transition');
+                square.setAttribute('data-index', index);
+
+                if (word === "FREE SPACE") {
+                    square.classList.add('free-space');
+                    square.innerHTML = `
+                        ${getVisualContent('FREE SPACE')}
+                        <span class="text-xl font-bold">FREE</span>
+                        <span class="text-xl font-bold">SPACE</span>
+                    `;
+                } else {
+                    square.innerHTML = `
+                        ${getVisualContent(word)}
+                        <span class="text-base text-gray-800 font-semibold leading-tight">${word}</span>
+                    `;
+                }
+
+                // Add click listener to mark square
+                square.addEventListener('click', () => markSquare(index));
+
+                // Apply 'marked' class if square is already marked (for free space)
+                if (markedSquares[index]) {
+                    square.classList.add('marked');
+                }
+
+                bingoGrid.appendChild(square);
+            });
+        }
+
+
+        // Function to mark a square on the bingo card
+        function markSquare(index) {
+            if (currentCardWords[index] === "FREE SPACE") return; // Cannot unmark free space
+
+            markedSquares[index] = !markedSquares[index]; // Toggle marked state
+            const squareElement = document.querySelector(`.bingo-square[data-index="${index}"]`);
+            if (squareElement) {
+                squareElement.classList.toggle('marked', markedSquares[index]);
+            }
+
+            checkForBingo();
+        }
+
+        // Function to check for Bingo
+        function checkForBingo() {
+            const lines = [];
+
+            // Rows
+            for (let i = 0; i < BINGO_SIZE; i++) {
+                lines.push(Array.from({ length: BINGO_SIZE }, (v, k) => i * BINGO_SIZE + k));
+            }
+
+            // Columns
+            for (let i = 0; i < BINGO_SIZE; i++) {
+                lines.push(Array.from({ length: BINGO_SIZE }, (v, k) => i + k * BINGO_SIZE));
+            }
+
+            // Diagonals
+            const diag1 = [];
+            const diag2 = [];
+            for (let i = 0; i < BINGO_SIZE; i++) {
+                diag1.push(i * BINGO_SIZE + i);
+                diag2.push(i * BINGO_SIZE + (BINGO_SIZE - 1 - i));
+            }
+            lines.push(diag1);
+            lines.push(diag2);
+
+            let hasBingo = false;
+            for (const line of lines) {
+                const isLineMarked = line.every(index => markedSquares[index]);
+                if (isLineMarked) {
+                    hasBingo = true;
+                    break;
+                }
+            }
+
+            if (hasBingo) {
+                showBingoMessage();
+            }
+        }
+
+        // Function to display a bingo message
+        function showBingoMessage() {
+            const modal = document.getElementById('bingoMessageModal');
+            modal.style.display = 'flex'; // Use flex to center
+        }
+
+        // Function to close the modal
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Function to render the caller's word list
+        function renderCallerWords() {
+            const callerWordsDiv = document.getElementById('callerWords');
+            callerWordsDiv.innerHTML = ''; // Clear existing list
+
+            // Create a shuffled list of all words for the caller
+            const shuffledWords = shuffleArray([...words]);
+
+            shuffledWords.forEach(word => {
+                const wordItem = document.createElement('div');
+                wordItem.classList.add('caller-word-item', 'flex', 'items-center', 'p-3', 'rounded-md', 'shadow-sm', 'bg-white', 'cursor-pointer');
+                wordItem.setAttribute('data-word', word);
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.classList.add('mr-3', 'w-5', 'h-5', 'form-checkbox', 'text-blue-600', 'rounded', 'focus:ring-blue-500');
+                checkbox.checked = calledWords.has(word);
+                checkbox.addEventListener('change', (event) => {
+                    if (event.target.checked) {
+                        calledWords.add(word);
+                        wordItem.classList.add('called');
+                    } else {
+                        calledWords.delete(word);
+                        wordItem.classList.remove('called');
+                    }
+                });
+
+                const wordSpan = document.createElement('span');
+                wordSpan.classList.add('text-lg', 'text-gray-900', 'font-medium');
+                wordSpan.textContent = word;
+
+                wordItem.appendChild(checkbox);
+                wordItem.appendChild(wordSpan);
+
+                // Add 'called' class if already called
+                if (calledWords.has(word)) {
+                    wordItem.classList.add('called');
+                }
+
+                callerWordsDiv.appendChild(wordItem);
+            });
+        }
+
+        // Initialize the game when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('generateCardButton').addEventListener('click', generateBingoCard);
+
+            // Generate initial card and caller list
+            generateBingoCard();
+            renderCallerWords();
+        });
+    </script>
+</body>
+</html>
